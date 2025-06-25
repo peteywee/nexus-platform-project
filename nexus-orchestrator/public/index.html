@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Platform Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
+        .container { max-width: 900px; margin: auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1, h2 { color: #0056b3; }
+        nav { margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px;}
+        nav a { margin-right: 15px; text-decoration: none; color: #007bff; font-weight: bold; }
+        nav a:hover { text-decoration: underline; }
+        #eventLog { border: 1px solid #ddd; padding: 10px; height: 500px; overflow-y: scroll; background: #e9e9e9; border-radius: 4px; }
+        .event-item { margin-bottom: 8px; padding: 5px; border-bottom: 1px dotted #ccc; }
+        .event-item:last-child { border-bottom: none; }
+        .event-type { font-weight: bold; color: #0056b3; }
+        .event-timestamp { font-size: 0.8em; color: #666; margin-left: 10px; }
+        pre { background-color: #eee; padding: 5px; border-radius: 3px; font-size: 0.9em; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Nexus Platform Dashboard</h1>
+        <nav>
+            <a href="/">Dashboard</a>
+            <a href="/upload">Upload Document</a>
+            <a href="/command">Submit Task</a>
+            <a href="/api/tasks" target="_blank">View All Tasks (JSON)</a>
+        </nav>
+
+        <h2>Real-time Event Stream</h2>
+        <div id="eventLog"></div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const eventLog = document.getElementById('eventLog');
+
+        socket.on('connect', () => {
+            appendEvent({ type: 'SOCKET_CONNECT', payload: { message: 'Connected to Orchestrator Socket.IO' } });
+        });
+
+        socket.on('platform_event', (event) => {
+            appendEvent(event);
+        });
+
+        socket.on('disconnect', () => {
+            appendEvent({ type: 'SOCKET_DISCONNECT', payload: { message: 'Disconnected from Orchestrator Socket.IO' } });
+        });
+
+        function appendEvent(event) {
+            const eventItem = document.createElement('div');
+            eventItem.classList.add('event-item');
+
+            const timestamp = new Date(event.timestamp || Date.now()).toLocaleString();
+            eventItem.innerHTML = `
+                <span class="event-type">${event.type}</span>
+                <span class="event-timestamp">${timestamp}</span>
+                <pre>${JSON.stringify(event.payload, null, 2)}</pre>
+            `;
+            eventLog.prepend(eventItem); // Add to top
+            // Keep log from growing too large (optional)
+            if (eventLog.children.length > 100) {
+                eventLog.removeChild(eventLog.lastChild);
+            }
+        }
+    </script>
+</body>
+</html>

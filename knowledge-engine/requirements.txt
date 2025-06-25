@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+pydantic
+SQLAlchemy
+psycopg2-binary
+langchain
+sentence-transformers
+qdrant-client
+unstructured
+pypdf
+openpyxl
+python-magic
+langchain_community
