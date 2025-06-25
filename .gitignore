@@ -1,0 +1,25 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+.pytest_cache/
+.mypy_cache/
+
+# Docker
+*.log
+*.sqlite
+.DS_Store
+.vscode/
+
+# Ignore Docker bind mount paths if they create local files
+/nexus-orchestrator/node_modules/
+/knowledge-engine/data/ # For embedding cache

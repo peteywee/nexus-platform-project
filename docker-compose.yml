@@ -12,9 +12,12 @@ services:
       - NEXUS_DB_NAME=${NEXUS_DB_NAME}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
     depends_on:
-      - nexus-db
-      - knowledge-engine
-      - financial-engine
+      nexus-db:
+        condition: service_healthy
+      knowledge-engine:
+        condition: service_started # knowledge-engine will retry DB connection internally
+      financial-engine:
+        condition: service_started # financial-engine will retry DB connection internally
     volumes:
       - ./nexus-orchestrator:/app
     command: npm run dev
@@ -32,11 +35,15 @@ services:
       - KNOWLEDGE_DB_NAME=${KNOWLEDGE_DB_NAME}
       - QDRANT_HOST=${QDRANT_HOST}
     depends_on:
-      - knowledge-db
-      - qdrant
+      knowledge-db:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
     volumes:
       - ./knowledge-engine:/app
       - embedding_cache:/app/data
+    # Add restart policy to help with transient DB connection issues
+    restart: on-failure
 
   financial-engine:
     build: ./financial-engine
@@ -50,9 +57,12 @@ services:
       - FINANCIAL_DB_HOST=${FINANCIAL_DB_HOST}
       - FINANCIAL_DB_NAME=${FINANCIAL_DB_NAME}
     depends_on:
-      - financial-db
+      financial-db:
+        condition: service_healthy
     volumes:
       - ./financial-engine:/app
+    # Add restart policy to help with transient DB connection issues
+    restart: on-failure
 
   qdrant:
     image: qdrant/qdrant:v1.7.4
@@ -61,6 +71,11 @@ services:
       - "6333:6333"
     volumes:
       - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:6333/qdrant"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   nexus-db:
     image: postgres:15
@@ -73,6 +88,11 @@ services:
       - "5432:5432"
     volumes:
       - nexus_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   knowledge-db:
     image: postgres:15
@@ -85,6 +105,11 @@ services:
       - "5433:5432"
     volumes:
       - knowledge_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   financial-db:
     image: postgres:15
@@ -97,6 +122,11 @@ services:
       - "5434:5432"
     volumes:
       - financial_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   qdrant_data:
