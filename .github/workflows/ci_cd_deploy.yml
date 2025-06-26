@@ -1,0 +1,53 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+  DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
+  # Replace 'tssprotx/agent' with your Docker Hub repository prefix, e.g., 'your-username/your-repo-name'
+  DOCKER_IMAGE_BASE: tssprotx/agent
+
+jobs:
+  build_and_push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        # Ensure you have DOCKER_HUB_USERNAME and DOCKER_HUB_TOKEN secrets configured in your GitHub repository
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKER_HUB_USERNAME }}
+          password: ${{ env.DOCKER_HUB_TOKEN }}
+
+      # Build and Push Nexus Orchestrator
+      - name: Build and Push Nexus Orchestrator
+        uses: docker/build-push-action@v5
+        with:
+          context: ./nexus-orchestrator
+          push: true
+          tags: ${{ env.DOCKER_IMAGE_BASE }}:nexus-orchestrator_latest
+
+      # Build and Push Knowledge Engine
+      - name: Build and Push Knowledge Engine
+        uses: docker/build-push-action@v5
+        with:
+          context: ./knowledge-engine
+          push: true
+          tags: ${{ env.DOCKER_IMAGE_BASE }}:knowledge-engine_latest
+
+      # Build and Push Financial Engine
+      - name: Build and Push Financial Engine
+        uses: docker/build-push-action@v5
+        with:
+          context: ./financial-engine
+          push: true
+          tags: ${{ env.DOCKER_IMAGE_BASE }}:financial-engine_latest

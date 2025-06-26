@@ -1,16 +1,34 @@
-FROM python:3.10-slim
-
-# Install the system library required by the 'python-magic' package
-RUN apt-get update && apt-get install -y libmagic1 && rm -rf /var/lib/apt/lists/*
+# --- Builder Stage ---
+# Use the full Python image which includes build tools like gcc
+FROM python:3.10 AS builder
 
 WORKDIR /app
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
 COPY requirements.txt .
-
-# Upgrade pip and install requirements with a longer timeout and retries
+# Upgrade pip and install all dependencies into the virtual environment
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir --timeout=100 --retries=5 -r requirements.txt
 
+
+# --- Final Stage ---
+# Use the slim image for the final, smaller production image
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Copy the virtual environment from the builder stage
+COPY --from=builder /opt/venv /opt/venv
+# Copy the source code
 COPY main.py .
+
+# Create a non-root user for security
+RUN addgroup --system --gid 1001 python
+RUN adduser --system --uid 1001 knowledge
+USER knowledge
+
+# Set the PATH to include the venv, so the 'uvicorn' command is found
+ENV PATH="/opt/venv/bin:$PATH"
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "4000"]
