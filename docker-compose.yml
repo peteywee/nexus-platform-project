@@ -1,34 +1,36 @@
 services:
   nexus-orchestrator:
+    # 'build' tells Docker Compose to build an image from the specified directory.
     build: ./nexus-orchestrator
+    # 'image' names the built image for local reference and potential pushing to a registry.
+    # Replace 'tssprotx/agent' with your Docker Hub username/repository.
     image: tssprotx/agent:nexus-orchestrator_latest
     container_name: nexus-orchestrator
     ports:
       - "3003:3000"
     environment:
+      # These variables are populated from the .env file at the root of the project.
       - NEXUS_DB_USER=${NEXUS_DB_USER}
       - NEXUS_DB_PASSWORD=${NEXUS_DB_PASSWORD}
       - NEXUS_DB_HOST=${NEXUS_DB_HOST}
       - NEXUS_DB_NAME=${NEXUS_DB_NAME}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - JWT_SECRET=${JWT_SECRET}
     depends_on:
+      # Ensures that the orchestrator will not start until its database is healthy.
       nexus-db: { condition: service_healthy }
-      # Note: For develop.watch, you usually don't need depends_on on other *application* services
-      # as they might restart frequently during development. The DBs are crucial for initial startup.
     develop:
+      # This section enables 'watch' mode for hot-reloading.
       watch:
-        # Sync the entire nexus-orchestrator directory (excluding node_modules)
+        # If any file in the source directory changes, sync it to the container without restarting.
         - action: sync
           path: ./nexus-orchestrator
           target: /app
-          ignore:
-            - node_modules/
-        # Rebuild the container if package.json or Dockerfile changes (e.g., new dependencies)
+          ignore: [node_modules/] # Ignore the node_modules directory to prevent conflicts.
+        # If package.json changes, trigger a full rebuild of the image.
         - action: rebuild
           path: ./nexus-orchestrator/package.json
-        - action: rebuild
-          path: ./nexus-orchestrator/Dockerfile
-    restart: on-failure
+    restart: unless-stopped
 
   knowledge-engine:
     build: ./knowledge-engine
@@ -44,7 +46,10 @@ services:
       - QDRANT_HOST=${QDRANT_HOST}
     depends_on:
       knowledge-db: { condition: service_healthy }
-      qdrant: { condition: service_healthy }
+      qdrant: { condition: service_started } # Changed from healthy to started after disabling healthcheck
+    volumes:
+      # Use a named volume for the embedding model cache to persist it across container restarts.
+      - embedding_cache:/app/data
     develop:
       watch:
         - action: sync
@@ -52,9 +57,7 @@ services:
           target: /app
         - action: rebuild
           path: ./knowledge-engine/requirements.txt
-        - action: rebuild
-          path: ./knowledge-engine/Dockerfile
-    restart: on-failure
+    restart: unless-stopped
 
   financial-engine:
     build: ./financial-engine
@@ -76,28 +79,24 @@ services:
           target: /app
         - action: rebuild
           path: ./financial-engine/requirements.txt
-        - action: rebuild
-          path: ./financial-engine/Dockerfile
-    restart: on-failure
+    restart: unless-stopped
 
-  # --- Database and Utility Services (Unchanged from previous versions) ---
   qdrant:
     image: qdrant/qdrant:v1.7.4
-    platform: linux/amd64 
+    platform: linux/amd64 # Specifies architecture for compatibility
     container_name: qdrant
     ports:
       - "6333:6333"
     volumes:
       - qdrant_data:/qdrant/storage
     healthcheck:
-      test: ["CMD-SHELL", "nc -z localhost 6333"] 
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
+      # Healthcheck is disabled to prevent startup failures on certain systems
+      # where the check mechanism is unreliable for this specific image.
+      disable: true
+    restart: unless-stopped
 
   nexus-db:
-    image: postgres:15
+    image: postgres:17 # Using latest major version of PostgreSQL
     container_name: nexus-db
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
@@ -112,9 +111,10 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   knowledge-db:
-    image: postgres:15
+    image: postgres:17 # Using latest major version of PostgreSQL
     container_name: knowledge-db
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
@@ -129,9 +129,10 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   financial-db:
-    image: postgres:15
+    image: postgres:17 # Using latest major version of PostgreSQL
     container_name: financial-db
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
@@ -146,7 +147,9 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
+# Named volumes are used to persist data across container restarts and removals.
 volumes:
   qdrant_data:
   nexus_db_data:

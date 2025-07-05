@@ -1,34 +1,26 @@
-# --- Build Stage: For Development and Production Dependencies ---
-# We use a build stage to compile any native add-ons (like bcrypt).
-FROM node:20-slim AS builder
+# Use the official Node.js 20 slim image as the base
+FROM node:20-slim
+
+# Set the working directory in the container
 WORKDIR /app
+
+# Copy package.json and package-lock.json first to leverage Docker layer caching.
 COPY package*.json ./
-# Use 'npm install' here instead of 'npm ci' to ensure it can build from package.json if needed,
-# which is more robust for creating a complete node_modules directory.
+
+# Install all dependencies. This is the most reliable way to ensure all packages,
+# including compiled ones like bcrypt, are correctly installed.
 RUN npm install
 
-# --- Production Stage: The Final, Lean Image ---
-FROM node:20-slim AS final
-WORKDIR /app
-
-# Create a non-root user for enhanced security.
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nexus
-
-# Copy the fully built node_modules from the builder stage.
-# This copies EVERYTHING, including the compiled bcrypt.
-COPY --from=builder /app/node_modules ./node_modules
-
-# Copy the package manifests. They are needed for npm to run the start script.
-COPY package*.json ./
-
-# Copy the rest of the application source code.
+# Copy the rest of your application's source code into the container.
 COPY . .
 
-# Switch to the non-root user.
+# Create and switch to a non-root user for better security.
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nexus
 USER nexus
 
+# Expose the port the app runs on
 EXPOSE 3000
 
-# Use the 'start' script from package.json, which runs 'node src/server.js' directly.
-CMD [ "npm", "start" ]
+# The command to run when the container starts using the "dev" script for nodemon.
+CMD [ "npm", "run", "dev" ]
