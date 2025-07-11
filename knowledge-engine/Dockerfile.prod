@@ -1,0 +1,24 @@
+# --- Build Stage ---
+FROM node:20-slim AS builder
+WORKDIR /app
+COPY package*.json ./
+# Install ONLY production dependencies.
+RUN npm install --omit=dev
+
+# --- Production Stage ---
+FROM node:20-slim AS final
+WORKDIR /app
+
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nexus
+
+COPY --from=builder /app/node_modules ./node_modules
+COPY package*.json ./
+COPY . .
+
+USER nexus
+EXPOSE 3000
+
+# Use the 'start' script, which runs 'node src/server.js' directly.
+# This is stable and correct for production.
+CMD [ "npm", "start" ]

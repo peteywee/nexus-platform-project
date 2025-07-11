@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  nexus-orchestrator:
+    build:
+      context: ./nexus-orchestrator
+      dockerfile: Dockerfile.prod # <-- USE THE PROD DOCKERFILE
+    image: tssprotx/agent:nexus-orchestrator_latest
+    container_name: nexus-orchestrator
+    ports:
+      - "3003:3000"
+    environment:
+      - NEXUS_DB_USER=${NEXUS_DB_USER}
+      - NEXUS_DB_PASSWORD=${NEXUS_DB_PASSWORD}
+      - NEXUS_DB_HOST=${NEXUS_DB_HOST}
+      - NEXUS_DB_NAME=${NEXUS_DB_NAME}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on:
+      nexus-db: { condition: service_healthy }
+    restart: unless-stopped
+
+  # All other services are identical to the original docker-compose.yml
+  # No 'develop' keys, and they don't need a separate prod Dockerfile.
+  knowledge-engine:
+    build: ./knowledge-engine
+    image: tssprotx/agent:knowledge-engine_latest
+    # ... (copy the rest of the knowledge-engine section from docker-compose.yml, but REMOVE the 'develop' key)
+
+  financial-engine:
+    build: ./financial-engine
+    image: tssprotx/agent:financial-engine_latest
+    # ... (copy the rest of the financial-engine section from docker-compose.yml, but REMOVE the 'develop' key)
+
+  # ... (copy the full, unchanged sections for qdrant, nexus-db, knowledge-db, financial-db)
+
+volumes:
+  # ... (copy the full, unchanged volumes section)
+```    *You will need to copy and paste the other service definitions from your main `docker-compose.yml` into this file, just making sure to remove the `develop` section from each.*
