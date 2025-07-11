@@ -10,7 +10,7 @@ langchain-community
 
 sentence-transformers
 # Pin qdrant-client to a version compatible with our Qdrant server (v1.7.x)
-qdrant-client==1.7.0
+qdrant-client==1.9.0
 unstructured
 pypdf
 openpyxl
