@@ -1,4 +1,5 @@
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const http = require('http');
 const { Server } = require('socket.io');
 const multer = require('multer');
@@ -18,6 +19,13 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
+// Configure rate limiter: maximum of 100 requests per 15 minutes
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // limit each IP to 100 requests per windowMs
+    message: "Too many requests, please try again later.",
+});
+
 const emitEvent = (type, payload) => {
     const event = { type, payload, timestamp: new Date() };
     console.log('EVENT:', event);
@@ -29,7 +37,7 @@ agent.setEventEmitter(emitEvent);
 // --- Static Pages ---
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'index.html')));
 app.get('/upload', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'upload.html')));
-app.get('/command', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'command.html')));
+app.get('/command', limiter, (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'command.html')));
 
 // --- Agent APIs ---
 app.post('/api/upload', upload.single('document'), agent.handleFileUpload);
