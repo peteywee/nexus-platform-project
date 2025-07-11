@@ -3,12 +3,19 @@ uvicorn[standard]
 pydantic
 SQLAlchemy
 psycopg2-binary
+
+# LangChain's core package and its now-separate community package
 langchain
+langchain-community
+
 sentence-transformers
-qdrant-client
+# Pin qdrant-client to a version compatible with our Qdrant server (v1.7.x)
+qdrant-client==1.7.0
 unstructured
 pypdf
 openpyxl
 python-magic
-langchain_community
+# Required by FastAPI for handling file uploads (multipart/form-data)
 python-multipart
+# Required by 'unstructured' for parsing HTML/XML content within documents
+beautifulsoup4
